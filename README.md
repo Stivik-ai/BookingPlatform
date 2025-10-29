@@ -77,7 +77,7 @@ The database includes:
 
 ## Subscription Model
 
-Companies pay a monthly subscription (50-100 PLN) to:
+Companies pay a monthly subscription (20 PLN) to:
 - Maintain an active profile
 - Accept online bookings
 - Access management dashboard
