@@ -6,14 +6,17 @@ import { useNavigate } from './navigation';
 interface Company {
   id: string;
   name: string;
-  slug: string;
-  description: string | null;
-  logo_url: string | null;
+  description: string;
+  logo_url: string;
   category: string;
-  location_city: string | null;
+  city: string;
 }
 
-export function CompanyListPage() {
+interface CompanyListPageProps {
+  onSelectCompany?: (id: string) => void;
+}
+
+export function CompanyListPage({ onSelectCompany }: CompanyListPageProps) {
   const navigate = useNavigate();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,13 +29,12 @@ export function CompanyListPage() {
 
   async function loadCompanies() {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('companies')
-        .select('id, name, slug, description, logo_url, category, location_city')
+        .select('id, name, description, logo_url, category, city')
         .eq('is_active', true)
         .order('name');
 
-      const { data, error } = await query;
       if (error) throw error;
       setCompanies(data || []);
     } catch (error) {
@@ -125,7 +127,13 @@ export function CompanyListPage() {
             {filteredCompanies.map((company) => (
               <div
                 key={company.id}
-                onClick={() => navigate(`/companies/${company.slug}`)}
+                onClick={() => {
+                  if (onSelectCompany) {
+                    onSelectCompany(company.id);
+                  } else {
+                    navigate(`/company/${company.id}`);
+                  }
+                }}
                 className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden border border-gray-200"
               >
                 {company.logo_url ? (
@@ -149,10 +157,10 @@ export function CompanyListPage() {
                     </span>
                   </div>
 
-                  {company.location_city && (
+                  {company.city && (
                     <div className="flex items-center text-sm text-gray-600 mb-3">
                       <MapPin size={16} className="mr-1" />
-                      {company.location_city}
+                      {company.city}
                     </div>
                   )}
 

@@ -8,60 +8,26 @@ export type Json =
 
 export type UserRole = 'admin' | 'company' | 'client';
 
-export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
-export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
-export type NotificationType = 'email' | 'sms';
-export type NotificationStatus = 'pending' | 'sent' | 'failed';
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+export type NotificationType = 'confirmation' | 'reminder' | 'cancellation';
+export type NotificationChannel = 'email' | 'sms' | 'both';
 
 export interface Database {
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          role: UserRole;
-          full_name: string;
-          phone: string | null;
-          avatar_url: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id: string;
-          role?: UserRole;
-          full_name: string;
-          phone?: string | null;
-          avatar_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          role?: UserRole;
-          full_name?: string;
-          phone?: string | null;
-          avatar_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
       companies: {
         Row: {
           id: string;
           owner_id: string;
           name: string;
-          slug: string;
-          description: string | null;
-          logo_url: string | null;
+          description: string;
+          contact_email: string;
+          contact_phone: string;
+          logo_url: string;
+          address: string;
+          city: string;
           category: string;
-          location_address: string | null;
-          location_city: string | null;
-          location_country: string;
-          email: string | null;
-          phone: string | null;
           is_active: boolean;
-          subscription_tier: string;
-          subscription_expires_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -69,18 +35,14 @@ export interface Database {
           id?: string;
           owner_id: string;
           name: string;
-          slug: string;
-          description?: string | null;
-          logo_url?: string | null;
-          category: string;
-          location_address?: string | null;
-          location_city?: string | null;
-          location_country?: string;
-          email?: string | null;
-          phone?: string | null;
+          description?: string;
+          contact_email: string;
+          contact_phone?: string;
+          logo_url?: string;
+          address?: string;
+          city?: string;
+          category?: string;
           is_active?: boolean;
-          subscription_tier?: string;
-          subscription_expires_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -88,18 +50,14 @@ export interface Database {
           id?: string;
           owner_id?: string;
           name?: string;
-          slug?: string;
-          description?: string | null;
-          logo_url?: string | null;
+          description?: string;
+          contact_email?: string;
+          contact_phone?: string;
+          logo_url?: string;
+          address?: string;
+          city?: string;
           category?: string;
-          location_address?: string | null;
-          location_city?: string | null;
-          location_country?: string;
-          email?: string | null;
-          phone?: string | null;
           is_active?: boolean;
-          subscription_tier?: string;
-          subscription_expires_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -109,37 +67,31 @@ export interface Database {
           id: string;
           company_id: string;
           name: string;
-          description: string | null;
-          duration_minutes: number;
+          description: string;
           price: number;
-          currency: string;
+          duration_minutes: number;
           is_active: boolean;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
           company_id: string;
           name: string;
-          description?: string | null;
-          duration_minutes: number;
-          price: number;
-          currency?: string;
+          description?: string;
+          price?: number;
+          duration_minutes?: number;
           is_active?: boolean;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           id?: string;
           company_id?: string;
           name?: string;
-          description?: string | null;
-          duration_minutes?: number;
+          description?: string;
           price?: number;
-          currency?: string;
+          duration_minutes?: number;
           is_active?: boolean;
           created_at?: string;
-          updated_at?: string;
         };
       };
       schedules: {
@@ -150,7 +102,6 @@ export interface Database {
           start_time: string;
           end_time: string;
           is_active: boolean;
-          created_at: string;
         };
         Insert: {
           id?: string;
@@ -159,7 +110,6 @@ export interface Database {
           start_time: string;
           end_time: string;
           is_active?: boolean;
-          created_at?: string;
         };
         Update: {
           id?: string;
@@ -168,7 +118,6 @@ export interface Database {
           start_time?: string;
           end_time?: string;
           is_active?: boolean;
-          created_at?: string;
         };
       };
       schedule_exceptions: {
@@ -176,44 +125,44 @@ export interface Database {
           id: string;
           company_id: string;
           date: string;
+          is_closed: boolean;
           start_time: string | null;
           end_time: string | null;
-          reason: string | null;
-          created_at: string;
+          reason: string;
         };
         Insert: {
           id?: string;
           company_id: string;
           date: string;
+          is_closed?: boolean;
           start_time?: string | null;
           end_time?: string | null;
-          reason?: string | null;
-          created_at?: string;
+          reason?: string;
         };
         Update: {
           id?: string;
           company_id?: string;
           date?: string;
+          is_closed?: boolean;
           start_time?: string | null;
           end_time?: string | null;
-          reason?: string | null;
-          created_at?: string;
+          reason?: string;
         };
       };
-      reservations: {
+      bookings: {
         Row: {
           id: string;
           company_id: string;
           service_id: string;
-          client_id: string | null;
+          client_user_id: string | null;
           client_name: string;
           client_email: string;
           client_phone: string;
-          reservation_date: string;
+          booking_date: string;
           start_time: string;
           end_time: string;
-          status: ReservationStatus;
-          notes: string | null;
+          status: BookingStatus;
+          notes: string;
           created_at: string;
           updated_at: string;
         };
@@ -221,15 +170,15 @@ export interface Database {
           id?: string;
           company_id: string;
           service_id: string;
-          client_id?: string | null;
+          client_user_id?: string | null;
           client_name: string;
           client_email: string;
-          client_phone: string;
-          reservation_date: string;
+          client_phone?: string;
+          booking_date: string;
           start_time: string;
           end_time: string;
-          status?: ReservationStatus;
-          notes?: string | null;
+          status?: BookingStatus;
+          notes?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -237,91 +186,50 @@ export interface Database {
           id?: string;
           company_id?: string;
           service_id?: string;
-          client_id?: string | null;
+          client_user_id?: string | null;
           client_name?: string;
           client_email?: string;
           client_phone?: string;
-          reservation_date?: string;
+          booking_date?: string;
           start_time?: string;
           end_time?: string;
-          status?: ReservationStatus;
-          notes?: string | null;
+          status?: BookingStatus;
+          notes?: string;
           created_at?: string;
           updated_at?: string;
-        };
-      };
-      payments: {
-        Row: {
-          id: string;
-          company_id: string;
-          amount: number;
-          currency: string;
-          subscription_tier: string;
-          payment_method: string | null;
-          payment_status: PaymentStatus;
-          payment_date: string | null;
-          period_start: string;
-          period_end: string;
-          transaction_id: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          company_id: string;
-          amount: number;
-          currency?: string;
-          subscription_tier: string;
-          payment_method?: string | null;
-          payment_status?: PaymentStatus;
-          payment_date?: string | null;
-          period_start: string;
-          period_end: string;
-          transaction_id?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          company_id?: string;
-          amount?: number;
-          currency?: string;
-          subscription_tier?: string;
-          payment_method?: string | null;
-          payment_status?: PaymentStatus;
-          payment_date?: string | null;
-          period_start?: string;
-          period_end?: string;
-          transaction_id?: string | null;
-          created_at?: string;
         };
       };
       notifications: {
         Row: {
           id: string;
-          user_id: string;
+          company_id: string;
+          booking_id: string | null;
+          recipient_email: string;
+          recipient_phone: string;
           type: NotificationType;
-          subject: string | null;
-          content: string;
-          status: NotificationStatus;
+          channel: NotificationChannel;
           sent_at: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
-          user_id: string;
+          company_id: string;
+          booking_id?: string | null;
+          recipient_email: string;
+          recipient_phone?: string;
           type: NotificationType;
-          subject?: string | null;
-          content: string;
-          status?: NotificationStatus;
+          channel: NotificationChannel;
           sent_at?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
-          user_id?: string;
+          company_id?: string;
+          booking_id?: string | null;
+          recipient_email?: string;
+          recipient_phone?: string;
           type?: NotificationType;
-          subject?: string | null;
-          content?: string;
-          status?: NotificationStatus;
+          channel?: NotificationChannel;
           sent_at?: string | null;
           created_at?: string;
         };

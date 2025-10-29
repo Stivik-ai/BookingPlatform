@@ -1,11 +1,25 @@
+import { useState } from 'react';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 import { AuthPage } from './pages/AuthPage';
 import { CompanyDashboard } from './pages/company/CompanyDashboard';
 import { CompanyListPage } from './pages/client/CompanyListPage';
-import { LogOut } from 'lucide-react';
+import { CompanyProfilePage } from './pages/client/CompanyProfilePage';
+import { CompanyProfileForm } from './components/company/CompanyProfileForm';
+import { ServicesManagement } from './components/company/ServicesManagement';
+import { ScheduleManagement } from './components/company/ScheduleManagement';
+import { BookingsManagement } from './components/company/BookingsManagement';
+import { LogOut, Building2, List, Calendar, Clock } from 'lucide-react';
+
+type CompanyView = 'dashboard' | 'profile' | 'services' | 'schedule' | 'bookings';
+type ClientView = 'list' | 'company';
 
 function AppContent() {
-  const { user, profile, loading, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
+  const [companyView, setCompanyView] = useState<CompanyView>('dashboard');
+  const [clientView, setClientView] = useState<ClientView>('list');
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [userRole, setUserRole] = useState<'company' | 'client'>('client');
+  const [companyId, setCompanyId] = useState<string>('');
 
   if (loading) {
     return (
@@ -15,8 +29,11 @@ function AppContent() {
     );
   }
 
-  if (!user || !profile) {
-    return <AuthPage />;
+  if (!user) {
+    return <AuthPage onSuccess={(role, compId) => {
+      setUserRole(role);
+      if (compId) setCompanyId(compId);
+    }} />;
   }
 
   return (
@@ -27,48 +44,82 @@ function AppContent() {
             <div className="flex items-center gap-8">
               <h1 className="text-xl font-bold text-gray-900">BookingPlatform</h1>
               <div className="hidden md:flex items-center gap-4">
-                {profile.role === 'client' && (
-                  <a
-                    href="/"
+                {userRole === 'client' && (
+                  <button
+                    onClick={() => {
+                      setClientView('list');
+                      setSelectedCompanyId('');
+                    }}
                     className="text-gray-700 hover:text-gray-900 font-medium"
                   >
                     Browse Companies
-                  </a>
+                  </button>
                 )}
-                {profile.role === 'company' && (
+                {userRole === 'company' && (
                   <>
-                    <a
-                      href="/dashboard"
-                      className="text-gray-700 hover:text-gray-900 font-medium"
+                    <button
+                      onClick={() => setCompanyView('dashboard')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                        companyView === 'dashboard'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                     >
+                      <Building2 size={18} />
                       Dashboard
-                    </a>
-                    <a
-                      href="/services"
-                      className="text-gray-700 hover:text-gray-900 font-medium"
+                    </button>
+                    <button
+                      onClick={() => setCompanyView('profile')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                        companyView === 'profile'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                     >
+                      <Building2 size={18} />
+                      Profile
+                    </button>
+                    <button
+                      onClick={() => setCompanyView('services')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                        companyView === 'services'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <List size={18} />
                       Services
-                    </a>
-                    <a
-                      href="/schedule"
-                      className="text-gray-700 hover:text-gray-900 font-medium"
+                    </button>
+                    <button
+                      onClick={() => setCompanyView('schedule')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                        companyView === 'schedule'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                     >
+                      <Clock size={18} />
                       Schedule
-                    </a>
-                    <a
-                      href="/reservations"
-                      className="text-gray-700 hover:text-gray-900 font-medium"
+                    </button>
+                    <button
+                      onClick={() => setCompanyView('bookings')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                        companyView === 'bookings'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                     >
-                      Reservations
-                    </a>
+                      <Calendar size={18} />
+                      Bookings
+                    </button>
                   </>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-sm">
-                <p className="font-medium text-gray-900">{profile.full_name}</p>
-                <p className="text-gray-600 capitalize">{profile.role}</p>
+                <p className="font-medium text-gray-900">{user.email}</p>
+                <p className="text-gray-600 capitalize">{userRole}</p>
               </div>
               <button
                 onClick={() => signOut()}
@@ -83,13 +134,50 @@ function AppContent() {
       </nav>
 
       <main>
-        {profile.role === 'company' && <CompanyDashboard />}
-        {profile.role === 'client' && <CompanyListPage />}
-        {profile.role === 'admin' && (
+        {userRole === 'company' && (
           <div className="max-w-7xl mx-auto px-4 py-8">
-            <h2 className="text-2xl font-bold text-gray-900">Admin Dashboard</h2>
-            <p className="text-gray-600 mt-2">Admin features coming soon...</p>
+            {companyView === 'dashboard' && (
+              <CompanyDashboard
+                onCompanyCreated={(id) => setCompanyId(id)}
+              />
+            )}
+            {companyView === 'profile' && (
+              <CompanyProfileForm
+                companyId={companyId || undefined}
+                onSuccess={() => {
+                  setCompanyView('dashboard');
+                  if (!companyId) {
+                    setTimeout(() => window.location.reload(), 500);
+                  }
+                }}
+              />
+            )}
+            {companyView === 'services' && companyId && (
+              <ServicesManagement companyId={companyId} />
+            )}
+            {companyView === 'schedule' && companyId && (
+              <ScheduleManagement companyId={companyId} />
+            )}
+            {companyView === 'bookings' && companyId && (
+              <BookingsManagement companyId={companyId} />
+            )}
           </div>
+        )}
+
+        {userRole === 'client' && (
+          <>
+            {clientView === 'list' && (
+              <CompanyListPage
+                onSelectCompany={(id) => {
+                  setSelectedCompanyId(id);
+                  setClientView('company');
+                }}
+              />
+            )}
+            {clientView === 'company' && selectedCompanyId && (
+              <CompanyProfilePage companyId={selectedCompanyId} />
+            )}
+          </>
         )}
       </main>
     </div>

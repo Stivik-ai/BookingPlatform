@@ -1,32 +1,37 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Calendar, DollarSign, Users, Settings, Plus } from 'lucide-react';
+import { Calendar, DollarSign, Users, Plus } from 'lucide-react';
+import { CompanyProfileForm } from '../../components/company/CompanyProfileForm';
 
 interface Company {
   id: string;
   name: string;
   is_active: boolean;
-  subscription_expires_at: string | null;
 }
 
 interface Stats {
-  totalReservations: number;
-  pendingReservations: number;
+  totalBookings: number;
+  pendingBookings: number;
   activeServices: number;
   monthlyRevenue: number;
 }
 
-export function CompanyDashboard() {
+interface CompanyDashboardProps {
+  onCompanyCreated?: (companyId: string) => void;
+}
+
+export function CompanyDashboard({ onCompanyCreated }: CompanyDashboardProps) {
   const { user } = useAuth();
   const [company, setCompany] = useState<Company | null>(null);
   const [stats, setStats] = useState<Stats>({
-    totalReservations: 0,
-    pendingReservations: 0,
+    totalBookings: 0,
+    pendingBookings: 0,
     activeServices: 0,
     monthlyRevenue: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -46,13 +51,13 @@ export function CompanyDashboard() {
       setCompany(companyData);
 
       if (companyData) {
-        const { count: reservationsCount } = await supabase
-          .from('reservations')
+        const { count: bookingsCount } = await supabase
+          .from('bookings')
           .select('*', { count: 'exact', head: true })
           .eq('company_id', companyData.id);
 
         const { count: pendingCount } = await supabase
-          .from('reservations')
+          .from('bookings')
           .select('*', { count: 'exact', head: true })
           .eq('company_id', companyData.id)
           .eq('status', 'pending');
@@ -64,8 +69,8 @@ export function CompanyDashboard() {
           .eq('is_active', true);
 
         setStats({
-          totalReservations: reservationsCount || 0,
-          pendingReservations: pendingCount || 0,
+          totalBookings: bookingsCount || 0,
+          pendingBookings: pendingCount || 0,
           activeServices: servicesCount || 0,
           monthlyRevenue: 0,
         });
@@ -86,6 +91,32 @@ export function CompanyDashboard() {
   }
 
   if (!company) {
+    if (showCreateForm) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="max-w-2xl w-full">
+            <CompanyProfileForm
+              onSuccess={() => {
+                setShowCreateForm(false);
+                loadCompanyData();
+                if (onCompanyCreated) {
+                  supabase
+                    .from('companies')
+                    .select('id')
+                    .eq('owner_id', user!.id)
+                    .maybeSingle()
+                    .then(({ data }) => {
+                      if (data) onCompanyCreated(data.id);
+                    });
+                }
+              }}
+              onCancel={() => setShowCreateForm(false)}
+            />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
@@ -94,7 +125,10 @@ export function CompanyDashboard() {
           <p className="text-gray-600 mb-6">
             You need to set up your company profile before you can start managing bookings.
           </p>
-          <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+          >
             <Plus size={20} />
             Create Company Profile
           </button>
@@ -104,9 +138,6 @@ export function CompanyDashboard() {
   }
 
   const isSubscriptionActive = company.is_active;
-  const subscriptionExpiry = company.subscription_expires_at
-    ? new Date(company.subscription_expires_at)
-    : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -115,51 +146,28 @@ export function CompanyDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{company.name}</h1>
-              <div className="flex items-center gap-2 mt-2">
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    isSubscriptionActive
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700'
-                  }`}
-                >
-                  {isSubscriptionActive ? 'Active' : 'Inactive'}
-                </span>
-                {subscriptionExpiry && (
-                  <span className="text-sm text-gray-600">
-                    Expires: {subscriptionExpiry.toLocaleDateString()}
-                  </span>
-                )}
-              </div>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-medium mt-2 inline-block ${
+                  isSubscriptionActive
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
+                }`}
+              >
+                {isSubscriptionActive ? 'Active' : 'Inactive'}
+              </span>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-              <Settings size={18} />
-              Settings
-            </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {!isSubscriptionActive && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-            <h3 className="text-yellow-800 font-semibold mb-1">Subscription Required</h3>
-            <p className="text-yellow-700 text-sm mb-3">
-              Your subscription is inactive. Renew to continue accepting bookings.
-            </p>
-            <button className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors">
-              Renew Subscription
-            </button>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium text-gray-600">Total Bookings</h3>
               <Calendar className="text-blue-600" size={20} />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{stats.totalReservations}</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.totalBookings}</p>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
@@ -167,13 +175,13 @@ export function CompanyDashboard() {
               <h3 className="text-sm font-medium text-gray-600">Pending</h3>
               <Users className="text-yellow-600" size={20} />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{stats.pendingReservations}</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.pendingBookings}</p>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium text-gray-600">Active Services</h3>
-              <Settings className="text-green-600" size={20} />
+              <Plus className="text-green-600" size={20} />
             </div>
             <p className="text-3xl font-bold text-gray-900">{stats.activeServices}</p>
           </div>
@@ -187,28 +195,24 @@ export function CompanyDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="space-y-3">
-              <button className="w-full flex items-center gap-3 p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
-                <Plus size={20} />
-                <span className="font-medium">Add New Service</span>
-              </button>
-              <button className="w-full flex items-center gap-3 p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
-                <Calendar size={20} />
-                <span className="font-medium">Manage Schedule</span>
-              </button>
-              <button className="w-full flex items-center gap-3 p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
-                <Users size={20} />
-                <span className="font-medium">View Reservations</span>
-              </button>
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Welcome to Your Dashboard</h2>
+          <p className="text-gray-600 mb-4">
+            Use the navigation menu above to manage your company profile, services, schedule, and bookings.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-semibold text-blue-900 mb-1">Manage Services</h3>
+              <p className="text-sm text-blue-700">Add and edit your service offerings</p>
             </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
-            <p className="text-gray-600 text-center py-8">No recent activity</p>
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-semibold text-blue-900 mb-1">Set Schedule</h3>
+              <p className="text-sm text-blue-700">Define your working hours</p>
+            </div>
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-semibold text-blue-900 mb-1">Handle Bookings</h3>
+              <p className="text-sm text-blue-700">Manage client appointments</p>
+            </div>
           </div>
         </div>
       </div>

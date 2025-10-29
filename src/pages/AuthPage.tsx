@@ -3,7 +3,11 @@ import { LoginForm } from '../components/auth/LoginForm';
 import { RegisterForm } from '../components/auth/RegisterForm';
 import { Calendar } from 'lucide-react';
 
-export function AuthPage() {
+interface AuthPageProps {
+  onSuccess?: (role: 'company' | 'client', companyId?: string) => void;
+}
+
+export function AuthPage({ onSuccess }: AuthPageProps) {
   const [isLogin, setIsLogin] = useState(true);
 
   return (
