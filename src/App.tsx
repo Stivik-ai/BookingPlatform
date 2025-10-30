@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 import { AuthPage } from './pages/AuthPage';
 import { CompanyDashboard } from './pages/company/CompanyDashboard';
@@ -9,19 +9,49 @@ import { ServicesManagement } from './components/company/ServicesManagement';
 import { ScheduleManagement } from './components/company/ScheduleManagement';
 import { BookingsManagement } from './components/company/BookingsManagement';
 import { LogOut, Building2, List, Calendar, Clock } from 'lucide-react';
+import { supabase } from './lib/supabase';
 
 type CompanyView = 'dashboard' | 'profile' | 'services' | 'schedule' | 'bookings';
 type ClientView = 'list' | 'company';
 
 function AppContent() {
-  const { user, loading, signOut } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
   const [companyView, setCompanyView] = useState<CompanyView>('dashboard');
   const [clientView, setClientView] = useState<ClientView>('list');
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
-  const [userRole, setUserRole] = useState<'company' | 'client'>('client');
   const [companyId, setCompanyId] = useState<string>('');
+  const [loadingCompany, setLoadingCompany] = useState(true);
 
-  if (loading) {
+  useEffect(() => {
+    if (user && profile?.role === 'business_owner') {
+      loadUserCompany();
+    } else {
+      setLoadingCompany(false);
+    }
+  }, [user, profile]);
+
+  async function loadUserCompany() {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setCompanyId(data.id);
+      }
+    } catch (error) {
+      console.error('Error loading company:', error);
+    } finally {
+      setLoadingCompany(false);
+    }
+  }
+
+  if (loading || (user && !profile)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -29,11 +59,18 @@ function AppContent() {
     );
   }
 
-  if (!user) {
-    return <AuthPage onSuccess={(role, compId) => {
-      setUserRole(role);
-      if (compId) setCompanyId(compId);
-    }} />;
+  if (!user || !profile) {
+    return <AuthPage />;
+  }
+
+  const userRole = profile.role;
+
+  if (userRole === 'business_owner' && loadingCompany) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   return (
@@ -55,7 +92,7 @@ function AppContent() {
                     Browse Companies
                   </button>
                 )}
-                {userRole === 'company' && (
+                {userRole === 'business_owner' && (
                   <>
                     <button
                       onClick={() => setCompanyView('dashboard')}
@@ -79,47 +116,53 @@ function AppContent() {
                       <Building2 size={18} />
                       Profile
                     </button>
-                    <button
-                      onClick={() => setCompanyView('services')}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                        companyView === 'services'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <List size={18} />
-                      Services
-                    </button>
-                    <button
-                      onClick={() => setCompanyView('schedule')}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                        companyView === 'schedule'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <Clock size={18} />
-                      Schedule
-                    </button>
-                    <button
-                      onClick={() => setCompanyView('bookings')}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                        companyView === 'bookings'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <Calendar size={18} />
-                      Bookings
-                    </button>
+                    {companyId && (
+                      <>
+                        <button
+                          onClick={() => setCompanyView('services')}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                            companyView === 'services'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <List size={18} />
+                          Services
+                        </button>
+                        <button
+                          onClick={() => setCompanyView('schedule')}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                            companyView === 'schedule'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <Clock size={18} />
+                          Schedule
+                        </button>
+                        <button
+                          onClick={() => setCompanyView('bookings')}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                            companyView === 'bookings'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <Calendar size={18} />
+                          Bookings
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-sm">
-                <p className="font-medium text-gray-900">{user.email}</p>
-                <p className="text-gray-600 capitalize">{userRole}</p>
+                <p className="font-medium text-gray-900">{profile.full_name}</p>
+                <p className="text-gray-600">
+                  {userRole === 'business_owner' ? 'Business Owner' : 'Client'}
+                </p>
               </div>
               <button
                 onClick={() => signOut()}
@@ -134,11 +177,14 @@ function AppContent() {
       </nav>
 
       <main>
-        {userRole === 'company' && (
+        {userRole === 'business_owner' && (
           <div className="max-w-7xl mx-auto px-4 py-8">
             {companyView === 'dashboard' && (
               <CompanyDashboard
-                onCompanyCreated={(id) => setCompanyId(id)}
+                onCompanyCreated={(id) => {
+                  setCompanyId(id);
+                  setCompanyView('profile');
+                }}
               />
             )}
             {companyView === 'profile' && (
@@ -147,7 +193,7 @@ function AppContent() {
                 onSuccess={() => {
                   setCompanyView('dashboard');
                   if (!companyId) {
-                    setTimeout(() => window.location.reload(), 500);
+                    loadUserCompany();
                   }
                 }}
               />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Building2, Save, X } from 'lucide-react';
+import { Building2, Save, X, Tag, Plus } from 'lucide-react';
 
 interface CompanyFormData {
   name: string;
@@ -12,6 +12,7 @@ interface CompanyFormData {
   city: string;
   category: string;
   logo_url: string;
+  tags: string[];
 }
 
 interface CompanyProfileFormProps {
@@ -36,6 +37,7 @@ const CATEGORIES = [
 export function CompanyProfileForm({ companyId, onSuccess, onCancel }: CompanyProfileFormProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [tagInput, setTagInput] = useState('');
   const [formData, setFormData] = useState<CompanyFormData>({
     name: '',
     description: '',
@@ -44,7 +46,8 @@ export function CompanyProfileForm({ companyId, onSuccess, onCancel }: CompanyPr
     address: '',
     city: '',
     category: '',
-    logo_url: ''
+    logo_url: '',
+    tags: []
   });
 
   useEffect(() => {
@@ -71,11 +74,34 @@ export function CompanyProfileForm({ companyId, onSuccess, onCancel }: CompanyPr
           address: data.address,
           city: data.city,
           category: data.category,
-          logo_url: data.logo_url
+          logo_url: data.logo_url,
+          tags: data.tags || []
         });
       }
     } catch (error) {
       console.error('Error loading company:', error);
+    }
+  }
+
+  function addTag() {
+    const trimmedTag = tagInput.trim().toLowerCase();
+    if (trimmedTag && !formData.tags.includes(trimmedTag)) {
+      setFormData({ ...formData, tags: [...formData.tags, trimmedTag] });
+      setTagInput('');
+    }
+  }
+
+  function removeTag(tagToRemove: string) {
+    setFormData({
+      ...formData,
+      tags: formData.tags.filter(tag => tag !== tagToRemove)
+    });
+  }
+
+  function handleTagKeyPress(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addTag();
     }
   }
 
@@ -239,6 +265,53 @@ export function CompanyProfileForm({ companyId, onSuccess, onCancel }: CompanyPr
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="https://example.com/logo.png"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Tags / Keywords *
+          </label>
+          <p className="text-xs text-gray-500 mb-2">
+            Add searchable tags like: barber, fryzjer, Kraków, męski strzyżenie, etc.
+          </p>
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyPress={handleTagKeyPress}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Type tag and press Enter or click Add"
+            />
+            <button
+              type="button"
+              onClick={addTag}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <Plus size={18} />
+              Add
+            </button>
+          </div>
+          {formData.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {formData.tags.map(tag => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                >
+                  <Tag size={14} />
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => removeTag(tag)}
+                    className="ml-1 hover:text-blue-900"
+                  >
+                    <X size={14} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

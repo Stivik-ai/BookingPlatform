@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Search, MapPin, Calendar } from 'lucide-react';
+import { Search, MapPin, Calendar, Tag, X } from 'lucide-react';
 import { useNavigate } from './navigation';
 
 interface Company {
@@ -10,6 +10,7 @@ interface Company {
   logo_url: string;
   category: string;
   city: string;
+  tags: string[];
 }
 
 interface CompanyListPageProps {
@@ -21,7 +22,8 @@ export function CompanyListPage({ onSelectCompany }: CompanyListPageProps) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [cityFilter, setCityFilter] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   useEffect(() => {
     loadCompanies();
@@ -31,9 +33,9 @@ export function CompanyListPage({ onSelectCompany }: CompanyListPageProps) {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('id, name, description, logo_url, category, city')
+        .select('id, name, description, logo_url, category, city, tags')
         .eq('is_active', true)
-        .order('name');
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setCompanies(data || []);
@@ -44,18 +46,38 @@ export function CompanyListPage({ onSelectCompany }: CompanyListPageProps) {
     }
   }
 
-  const categories = Array.from(new Set(companies.map(c => c.category)));
+  const allTags = Array.from(
+    new Set(companies.flatMap(c => c.tags || []))
+  ).sort();
+
+  const cities = Array.from(
+    new Set(companies.map(c => c.city).filter(Boolean))
+  ).sort();
 
   const filteredCompanies = companies.filter(company => {
-    const matchesSearch =
-      company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      company.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      company.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = !searchTerm ||
+      company.name.toLowerCase().includes(searchLower) ||
+      company.category.toLowerCase().includes(searchLower) ||
+      company.description?.toLowerCase().includes(searchLower) ||
+      company.city?.toLowerCase().includes(searchLower) ||
+      (company.tags || []).some(tag => tag.toLowerCase().includes(searchLower));
 
-    const matchesCategory = !categoryFilter || company.category === categoryFilter;
+    const matchesCity = !cityFilter || company.city === cityFilter;
 
-    return matchesSearch && matchesCategory;
+    const matchesTags = selectedTags.length === 0 ||
+      selectedTags.every(tag => (company.tags || []).includes(tag));
+
+    return matchesSearch && matchesCity && matchesTags;
   });
+
+  function toggleTag(tag: string) {
+    setSelectedTags(prev =>
+      prev.includes(tag)
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
+  }
 
   if (loading) {
     return (
@@ -70,7 +92,7 @@ export function CompanyListPage({ onSelectCompany }: CompanyListPageProps) {
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Find Services</h1>
-          <p className="text-gray-600">Book appointments with local businesses</p>
+          <p className="text-gray-600">Search by name, location, category, or tags</p>
         </div>
       </div>
 
@@ -80,38 +102,93 @@ export function CompanyListPage({ onSelectCompany }: CompanyListPageProps) {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
-              placeholder="Search by name, category, or description..."
+              placeholder="Search companies (e.g., 'barber Kraków', 'fryzjer męski', 'pilates')..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
-          {categories.length > 0 && (
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => setCategoryFilter('')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  !categoryFilter
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                All Categories
-              </button>
-              {categories.map((category) => (
+          {cities.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Filter by City
+              </label>
+              <div className="flex gap-2 flex-wrap">
                 <button
-                  key={category}
-                  onClick={() => setCategoryFilter(category)}
+                  onClick={() => setCityFilter('')}
                   className={`px-4 py-2 rounded-lg transition-colors ${
-                    categoryFilter === category
+                    !cityFilter
                       ? 'bg-blue-600 text-white'
                       : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  {category}
+                  All Cities
                 </button>
+                {cities.map((city) => (
+                  <button
+                    key={city}
+                    onClick={() => setCityFilter(city)}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      cityFilter === city
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {city}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {allTags.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Filter by Tags
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTag(tag)}
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors ${
+                      selectedTags.includes(tag)
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Tag size={14} />
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {selectedTags.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Active filters:</span>
+              {selectedTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                >
+                  {tag}
+                  <button
+                    onClick={() => toggleTag(tag)}
+                    className="hover:text-blue-900"
+                  >
+                    <X size={14} />
+                  </button>
+                </span>
               ))}
+              <button
+                onClick={() => setSelectedTags([])}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Clear all
+              </button>
             </div>
           )}
         </div>
@@ -161,6 +238,25 @@ export function CompanyListPage({ onSelectCompany }: CompanyListPageProps) {
                     <div className="flex items-center text-sm text-gray-600 mb-3">
                       <MapPin size={16} className="mr-1" />
                       {company.city}
+                    </div>
+                  )}
+
+                  {company.tags && company.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {company.tags.slice(0, 4).map(tag => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
+                        >
+                          <Tag size={10} />
+                          {tag}
+                        </span>
+                      ))}
+                      {company.tags.length > 4 && (
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                          +{company.tags.length - 4}
+                        </span>
+                      )}
                     </div>
                   )}
 

@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type UserRole = 'admin' | 'company' | 'client';
+export type UserRole = 'business_owner' | 'client';
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 export type NotificationType = 'confirmation' | 'reminder' | 'cancellation';
@@ -15,6 +15,35 @@ export type NotificationChannel = 'email' | 'sms' | 'both';
 export interface Database {
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          id: string;
+          role: UserRole;
+          full_name: string;
+          phone: string;
+          avatar_url: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          role?: UserRole;
+          full_name: string;
+          phone?: string;
+          avatar_url?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          role?: UserRole;
+          full_name?: string;
+          phone?: string;
+          avatar_url?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       companies: {
         Row: {
           id: string;
@@ -27,6 +56,7 @@ export interface Database {
           address: string;
           city: string;
           category: string;
+          tags: string[];
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -42,6 +72,7 @@ export interface Database {
           address?: string;
           city?: string;
           category?: string;
+          tags?: string[];
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -57,6 +88,7 @@ export interface Database {
           address?: string;
           city?: string;
           category?: string;
+          tags?: string[];
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
