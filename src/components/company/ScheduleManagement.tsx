@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Clock, Plus, X, AlertCircle } from 'lucide-react';
+import { Clock, Plus, X, AlertCircle, Save } from 'lucide-react';
 
 interface Schedule {
   id: string;
@@ -226,9 +226,21 @@ function DaySchedule({ day, dayOfWeek, schedule, onUpdate }: DayScheduleProps) {
   const [isActive, setIsActive] = useState(schedule?.is_active ?? false);
   const [startTime, setStartTime] = useState(schedule?.start_time || '09:00');
   const [endTime, setEndTime] = useState(schedule?.end_time || '17:00');
+  const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    onUpdate(dayOfWeek, startTime, endTime, isActive);
+  useEffect(() => {
+    const changed =
+      isActive !== (schedule?.is_active ?? false) ||
+      (isActive && (startTime !== (schedule?.start_time || '09:00') || endTime !== (schedule?.end_time || '17:00')));
+    setHasChanges(changed);
+  }, [isActive, startTime, endTime, schedule]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onUpdate(dayOfWeek, startTime, endTime, isActive);
+    setSaving(false);
+    setHasChanges(false);
   };
 
   return (
@@ -240,10 +252,7 @@ function DaySchedule({ day, dayOfWeek, schedule, onUpdate }: DayScheduleProps) {
         <input
           type="checkbox"
           checked={isActive}
-          onChange={(e) => {
-            setIsActive(e.target.checked);
-            setTimeout(handleSave, 100);
-          }}
+          onChange={(e) => setIsActive(e.target.checked)}
           className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
         />
         <span className="text-sm text-gray-600">Open</span>
@@ -254,7 +263,6 @@ function DaySchedule({ day, dayOfWeek, schedule, onUpdate }: DayScheduleProps) {
             type="time"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
-            onBlur={handleSave}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <span className="text-gray-600">to</span>
@@ -262,11 +270,22 @@ function DaySchedule({ day, dayOfWeek, schedule, onUpdate }: DayScheduleProps) {
             type="time"
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
-            onBlur={handleSave}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </>
       )}
+      <div className="ml-auto">
+        {hasChanges && (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save size={16} />
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { CompanyProfileForm } from './components/company/CompanyProfileForm';
 import { ServicesManagement } from './components/company/ServicesManagement';
 import { ScheduleManagement } from './components/company/ScheduleManagement';
 import { BookingsManagement } from './components/company/BookingsManagement';
+import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
 import { LogOut, Building2, List, Calendar, Clock } from 'lucide-react';
 import { supabase } from './lib/supabase';
 
@@ -21,6 +22,15 @@ function AppContent() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [companyId, setCompanyId] = useState<string>('');
   const [loadingCompany, setLoadingCompany] = useState(true);
+  const [isResetPassword, setIsResetPassword] = useState(false);
+
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+    if (type === 'recovery') {
+      setIsResetPassword(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (user && profile?.role === 'business_owner') {
@@ -49,6 +59,10 @@ function AppContent() {
     } finally {
       setLoadingCompany(false);
     }
+  }
+
+  if (isResetPassword) {
+    return <ResetPasswordPage />;
   }
 
   if (loading || (user && !profile)) {

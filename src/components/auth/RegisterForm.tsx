@@ -1,29 +1,49 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Eye, EyeOff } from 'lucide-react';
 import type { UserRole } from '../../lib/database.types';
 
 export function RegisterForm() {
   const { signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<UserRole>('client');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setSuccess(false);
     setLoading(true);
 
     try {
       await signUp(email, password, fullName, role);
+      setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign up');
     } finally {
       setLoading(false);
     }
+  }
+
+  if (success) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+          <p className="font-semibold mb-1">Registration Successful!</p>
+          <p className="text-sm">
+            Please check your email (<strong>{email}</strong>) for a confirmation link to activate your account.
+          </p>
+        </div>
+        <p className="text-sm text-gray-600 text-center">
+          Didn't receive the email? Check your spam folder or contact support.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -62,16 +82,25 @@ export function RegisterForm() {
         <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
           Password
         </label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={6}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Minimum 6 characters"
-        />
+        <div className="relative">
+          <input
+            id="password"
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Minimum 6 characters"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
       </div>
 
       <div>
